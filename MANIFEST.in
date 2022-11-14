@@ -1,0 +1,18 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include newibt *.css
+recursive-include newibt *.csv
+recursive-include newibt *.html
+recursive-include newibt *.ico
+recursive-include newibt *.js
+recursive-include newibt *.json
+recursive-include newibt *.md
+recursive-include newibt *.png
+recursive-include newibt *.py
+recursive-include newibt *.svg
+recursive-include newibt *.txt
+recursive-exclude newibt *.pyc
