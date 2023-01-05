@@ -123,6 +123,9 @@ doc_events = {
 	},
 	"Auto Repeat":{
 		"before_naming":"newibt.api.auto_before_naming",
+	},
+	"Employee Checkin":{
+		"validate":"newibt.api.validate"
 	}
 	
 }
@@ -146,6 +149,13 @@ doc_events = {
 #	"monthly": [
 #		"newibt.tasks.monthly"
 #	],
+# }
+# scheduler_events = {
+	
+# 	"daily": [
+# 		"newibt.api.update_last_sync_date_time"
+# 	]
+	
 # }
 
 # Testing

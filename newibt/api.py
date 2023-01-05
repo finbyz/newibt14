@@ -2,7 +2,7 @@ import frappe
 from datetime import datetime,date
 from math import floor
 import datetime
-from frappe.utils import add_days, cint, date_diff, format_date, getdate , today
+from frappe.utils import add_days, cint, date_diff, format_date, getdate , today , now
 from erpnext.accounts.utils import get_fiscal_year
 
 def validate_loan_application(self,method):
@@ -187,3 +187,51 @@ def send_notification(self, new_doc):
         attachments=attachments,
         print_letterhead=((attachments and attachments[0].get("print_letterhead")) or False)
     )
+# 24 Hour Atte
+import frappe
+import datetime
+from frappe.utils import today , now
+from datetime import datetime
+
+
+def validate(self,method):
+    update_time_of_last_sync(self)
+
+
+def update_time_of_last_sync(self):
+    if self.log_type == 'OUT':
+        doc_list = frappe.db.sql(f''' Select name From `tabEmployee Checkin` where employee = '{self.employee}'  and time < '{self.time}' ORDER BY time Desc''',as_dict=True)
+        
+        if len(doc_list) > 0:
+            doc = frappe.get_doc('Employee Checkin' , doc_list[0].name)
+            if doc.log_type == 'IN':
+                # se_time = datetime.strptime(str(self.time) , "%Y-%m-%d %H:%M:%S")
+                try:
+                    se_time = datetime.strptime(str(self.time), '%Y-%m-%d %H:%M:%S')
+                except:
+                    se_time = datetime.strptime(str(self.time), '%Y-%m-%d %H:%M:%S.%f')
+                delta = se_time - doc.time
+                sec = delta.total_seconds()
+                hours = sec / 60 / 60
+                if hours < 10:
+                    self.shift_actual_start = doc.shift_actual_start
+                    self.shift_actual_end = doc.shift_actual_end
+                    self.shift_start = doc.shift_start
+                    self.shift_end = doc.shift_end
+            
+        shift_type = frappe.db.get_value('Employee',self.employee,'default_shift')
+        if shift_type != None or shift_type != "" or shift_type:
+            try:
+                date = datetime.strptime(str(self.time), '%Y-%m-%d %H:%M:%S')
+            except:
+                date = datetime.strptime(str(self.time), '%Y-%m-%d %H:%M:%S.%f')
+            dt_time = date.strftime("%Y-%m-%d 23:59:59")
+            frappe.db.set_value('Shift Type' , shift_type , 'last_sync_of_checkin' ,dt_time)
+
+    # if self.log_type == 'IN':
+        
+    #     dt_time = datetime.strptime(self.time , "%Y-%m-%d %H:%M:%S")
+    #     dt_time=dt_time.replace(hour=23, minute=59, second=59)
+    #     self.shift_actual_start = dt_time
+       
+    
