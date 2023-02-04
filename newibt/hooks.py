@@ -94,9 +94,10 @@ app_license = "MIT"
 # ---------------
 # Override standard doctype classes
 
-# override_doctype_class = {
-#	"ToDo": "custom_app.overrides.CustomToDo"
-# }
+override_doctype_class = {
+	"Shift Type": "newibt.new_ibt.shift_type.ShiftType",
+	"Employee Checkin": "newibt.new_ibt.employee_checkin.EmployeeCheckin"
+}
 
 # Document Events
 # ---------------
@@ -218,8 +219,14 @@ from hrms.hr.doctype.compensatory_leave_request.compensatory_leave_request impor
 from newibt.api import create_leave_allocation
 CompensatoryLeaveRequest.create_leave_allocation = create_leave_allocation
 
+from hrms.hr.doctype.employee_checkin import employee_checkin
+from newibt.new_ibt.employee_checkin import mark_attendance_and_link_log
+employee_checkin.mark_attendance_and_link_log = mark_attendance_and_link_log
 
-
+from hrms.payroll.doctype.gratuity import gratuity
+from newibt.api import get_total_applicable_component_amount , calculate_employee_total_workings_days
+gratuity.get_total_applicable_component_amount = get_total_applicable_component_amount
+gratuity.calculate_employee_total_workings_days = calculate_employee_total_workings_days
 
 from hrms.payroll.doctype.gratuity import gratuity
 from newibt.api import get_work_experience_using_method

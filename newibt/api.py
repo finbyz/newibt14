@@ -2,8 +2,19 @@ import frappe
 from datetime import datetime,date
 from math import floor
 import datetime
+from frappe import _ , bold
 from frappe.utils import add_days, cint, date_diff, format_date, getdate , today , now
 from erpnext.accounts.utils import get_fiscal_year
+
+from math import floor
+
+from frappe import _ , bold
+from frappe.query_builder.functions import Sum
+from frappe.utils import flt, get_datetime, get_link_to_form
+
+from erpnext.accounts.general_ledger import make_gl_entries
+from erpnext.controllers.accounts_controller import AccountsController
+
 
 def validate_loan_application(self,method):
     base_salary=0
@@ -213,7 +224,7 @@ def update_time_of_last_sync(self):
                 delta = se_time - doc.time
                 sec = delta.total_seconds()
                 hours = sec / 60 / 60
-                if hours < 10:
+                if hours < 11:
                     self.shift_actual_start = doc.shift_actual_start
                     self.shift_actual_end = doc.shift_actual_end
                     self.shift_start = doc.shift_start
@@ -233,5 +244,43 @@ def update_time_of_last_sync(self):
     #     dt_time = datetime.strptime(self.time , "%Y-%m-%d %H:%M:%S")
     #     dt_time=dt_time.replace(hour=23, minute=59, second=59)
     #     self.shift_actual_start = dt_time
-       
-    
+def get_last_salary_slip(employee):
+	salary_slips = frappe.get_list(
+		"Salary Slip", filters={"employee": employee, "docstatus": 1}, order_by="start_date desc"
+	)
+	if not salary_slips:
+		return
+	return salary_slips[0].name
+
+def get_total_applicable_component_amount(employee, applicable_earnings_component, gratuity_rule):
+	sal_slip = get_last_salary_slip(employee)
+	if not sal_slip:
+		frappe.throw(_("No Salary Slip is found for Employee: {0}").format(bold(employee)))
+	component_and_amounts = frappe.get_all(
+		"Salary Detail",
+		filters={
+			"docstatus": 1,
+			"parent": sal_slip,
+			"parentfield": "earnings",
+			"salary_component": ("in", applicable_earnings_component),
+		},
+		fields=["default_amount"],
+	)
+	total_applicable_components_amount = 0
+	if not len(component_and_amounts):
+		frappe.throw(_("No Applicable Component is present in last month salary slip"))
+	for data in component_and_amounts:
+		total_applicable_components_amount += data.default_amount
+	return total_applicable_components_amount   
+
+def calculate_employee_total_workings_days(employee, date_of_joining, relieving_date):
+	employee_total_workings_days = (get_datetime(relieving_date) - get_datetime(date_of_joining)).days
+
+	# payroll_based_on = frappe.db.get_value("Payroll Settings", None, "payroll_based_on") or "Leave"
+	# if payroll_based_on == "Leave":
+	# 	total_lwp = get_non_working_days(employee, relieving_date, "On Leave")
+	# 	employee_total_workings_days -= total_lwp
+	# elif payroll_based_on == "Attendance":
+	# 	total_absents = get_non_working_days(employee, relieving_date, "Absent")
+	# 	employee_total_workings_days -= total_absents
+	return employee_total_workings_days
