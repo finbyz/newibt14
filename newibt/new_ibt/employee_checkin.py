@@ -23,6 +23,7 @@ class EmployeeCheckin(Document):
 		validate_active_employee(self.employee)
 		self.validate_duplicate_log()
 		self.fetch_shift()
+		self.update_time_of_last_sync()
 
 	def validate_duplicate_log(self):
 		doc = frappe.db.exists(
@@ -58,7 +59,35 @@ class EmployeeCheckin(Document):
 				self.shift_end = shift_actual_timings.end_datetime
 		else:
 			self.shift = None
-
+	def update_time_of_last_sync(self):
+		if self.log_type == 'OUT':
+			doc_list = frappe.db.sql(f''' Select name From `tabEmployee Checkin` where employee = '{self.employee}'  and time < '{self.time}' ORDER BY time Desc''',as_dict=True)
+			
+			if len(doc_list) > 0:
+				doc = frappe.get_doc('Employee Checkin' , doc_list[0].name)
+				if doc.log_type == 'IN':
+					# se_time = datetime.strptime(str(self.time) , "%Y-%m-%d %H:%M:%S")
+					try:
+						se_time = datetime.strptime(str(self.time), '%Y-%m-%d %H:%M:%S')
+					except:
+						se_time = datetime.strptime(str(self.time), '%Y-%m-%d %H:%M:%S.%f')
+					delta = se_time - doc.time
+					sec = delta.total_seconds()
+					hours = sec / 60 / 60
+					if hours < 11:
+						self.shift_actual_start = doc.shift_actual_start
+						self.shift_actual_end = doc.shift_actual_end
+						self.shift_start = doc.shift_start
+						self.shift_end = doc.shift_end
+				
+			shift_type = frappe.db.get_value('Employee',self.employee,'default_shift')
+			if shift_type != None or shift_type != "" or shift_type:
+				try:
+					date = datetime.strptime(str(self.time), '%Y-%m-%d %H:%M:%S')
+				except:
+					date = datetime.strptime(str(self.time), '%Y-%m-%d %H:%M:%S.%f')
+				dt_time = date.strftime("%Y-%m-%d 23:59:59")
+				frappe.db.set_value('Shift Type' , shift_type , 'last_sync_of_checkin' ,dt_time)
 
 @frappe.whitelist()
 def add_log_based_on_employee_field(

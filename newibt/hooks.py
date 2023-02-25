@@ -219,9 +219,9 @@ from hrms.hr.doctype.compensatory_leave_request.compensatory_leave_request impor
 from newibt.api import create_leave_allocation
 CompensatoryLeaveRequest.create_leave_allocation = create_leave_allocation
 
-from hrms.hr.doctype.employee_checkin import employee_checkin
-from newibt.new_ibt.employee_checkin import mark_attendance_and_link_log
-employee_checkin.mark_attendance_and_link_log = mark_attendance_and_link_log
+# from hrms.hr.doctype.employee_checkin import employee_checkin
+# from newibt.new_ibt.employee_checkin import mark_attendance_and_link_log
+# employee_checkin.mark_attendance_and_link_log = mark_attendance_and_link_log
 
 from hrms.payroll.doctype.gratuity import gratuity
 from newibt.api import get_total_applicable_component_amount , calculate_employee_total_workings_days
