@@ -5,7 +5,7 @@ import datetime
 from frappe import _ , bold
 from frappe.utils import add_days, cint, date_diff, format_date, getdate , today , now
 from erpnext.accounts.utils import get_fiscal_year
-
+from frappe import _, sendmail, db
 from math import floor
 
 from frappe import _ , bold
@@ -83,69 +83,69 @@ def create_leave_allocation(self, leave_period, date_difference):
 
 def before_naming(self, method):
     
-	if not self.get('amended_from') and not self.get('name'):
-		if not self.get('company_series'):
-			self.company_series = None
-		
-		if self.get('series_value'):
-			if self.series_value > 0:
-				name = naming_series_name(self.naming_series, self.company_series)
-				check = frappe.db.get_value('Series', name, 'current', order_by="name")
-				if check == 0:
-					pass
-				elif not check:
-					frappe.db.sql("insert into tabSeries (name, current) values ('{}', 0)".format(name))
+    if not self.get('amended_from') and not self.get('name'):
+        if not self.get('company_series'):
+            self.company_series = None
+        
+        if self.get('series_value'):
+            if self.series_value > 0:
+                name = naming_series_name(self.naming_series, self.company_series)
+                check = frappe.db.get_value('Series', name, 'current', order_by="name")
+                if check == 0:
+                    pass
+                elif not check:
+                    frappe.db.sql("insert into tabSeries (name, current) values ('{}', 0)".format(name))
 
-				frappe.db.sql("update `tabSeries` set current = {} where name = '{}'".format(cint(self.series_value) - 1, name))
+                frappe.db.sql("update `tabSeries` set current = {} where name = '{}'".format(cint(self.series_value) - 1, name))
 
 def naming_series_name(name, company_series=None):
-	if company_series:
-		name = name.replace('company_series', str(company_series))
-	name = name.replace('YYYY', str(datetime.date.today().year))
-	name = name.replace('YY', str(datetime.date.today().year)[2:])
-	name = name.replace('MM', '{0:0=2d}'.format(datetime.date.today().month))
-	name = name.replace('DD', '{0:0=2d}'.format(datetime.date.today().day))
-	name = name.replace('#', '')
-	name = name.replace('.', '')
-	return name
+    if company_series:
+        name = name.replace('company_series', str(company_series))
+    name = name.replace('YYYY', str(datetime.date.today().year))
+    name = name.replace('YY', str(datetime.date.today().year)[2:])
+    name = name.replace('MM', '{0:0=2d}'.format(datetime.date.today().month))
+    name = name.replace('DD', '{0:0=2d}'.format(datetime.date.today().day))
+    name = name.replace('#', '')
+    name = name.replace('.', '')
+    return name
 
 def auto_before_naming(self, method):
     
-	if not self.get('amended_from') and not self.get('name'):
-		if self.get('series_value'):
-			if self.series_value > 0:
-				name = auto_naming_series_name(self.naming_series)
-				check = frappe.db.get_value('Series', name, 'current', order_by="name")
-				if check == 0:
-					pass
-				elif not check:
-					frappe.db.sql("insert into tabSeries (name, current) values ('{}', 0)".format(name))
+    if not self.get('amended_from') and not self.get('name'):
+        if self.get('series_value'):
+            if self.series_value > 0:
+                name = auto_naming_series_name(self.naming_series)
+                check = frappe.db.get_value('Series', name, 'current', order_by="name")
+                if check == 0:
+                    pass
+                elif not check:
+                    frappe.db.sql("insert into tabSeries (name, current) values ('{}', 0)".format(name))
 
-				frappe.db.sql("update `tabSeries` set current = {} where name = '{}'".format(cint(self.series_value) - 1, name))
+                frappe.db.sql("update `tabSeries` set current = {} where name = '{}'".format(cint(self.series_value) - 1, name))
 
 def auto_naming_series_name(name):
-	name = name.replace('YYYY', str(datetime.date.today().year))
-	name = name.replace('YY', str(datetime.date.today().year)[2:])
-	name = name.replace('MM', '{0:0=2d}'.format(datetime.date.today().month))
-	name = name.replace('DD', '{0:0=2d}'.format(datetime.date.today().day))
-	name = name.replace('#', '')
-	name = name.replace('.', '')
-	return name
+    name = name.replace('YYYY', str(datetime.date.today().year))
+    name = name.replace('YY', str(datetime.date.today().year)[2:])
+    name = name.replace('MM', '{0:0=2d}'.format(datetime.date.today().month))
+    name = name.replace('DD', '{0:0=2d}'.format(datetime.date.today().day))
+    name = name.replace('#', '')
+    name = name.replace('.', '')
+    return name
 
 @frappe.whitelist()
 def make_auto_repeat(doctype, docname, frequency="Daily", start_date=None, end_date=None):
-	if not start_date:
-		start_date = getdate(today())
-	doc = frappe.new_doc("Auto Repeat")
-	doc.reference_doctype = doctype
-	doc.reference_document = docname
-	doc.series_value = frappe.db.get_value(doctype,docname,'auto_repeat_series_value')
-	doc.frequency = frequency
-	doc.start_date = start_date
-	if end_date:
-		doc.end_date = end_date
-	doc.save()
-	return doc
+    if not start_date:
+        start_date = getdate(today())
+    doc = frappe.new_doc("Auto Repeat")
+    doc.reference_doctype = doctype
+    doc.reference_document = docname
+    doc.series_value = frappe.db.get_value(doctype,docname,'auto_repeat_series_value')
+    doc.frequency = frequency
+    doc.start_date = start_date
+    if end_date:
+        doc.end_date = end_date
+    doc.save()
+    return doc
 
 def send_notification(self, new_doc):
     recipient = []
@@ -216,6 +216,7 @@ def update_time_of_last_sync(self):
         if len(doc_list) > 0:
             doc = frappe.get_doc('Employee Checkin' , doc_list[0].name)
             if doc.log_type == 'IN':
+                self.shift = doc.shift
                 # se_time = datetime.strptime(str(self.time) , "%Y-%m-%d %H:%M:%S")
                 try:
                     se_time = datetime.strptime(str(self.time), '%Y-%m-%d %H:%M:%S')
@@ -224,11 +225,11 @@ def update_time_of_last_sync(self):
                 delta = se_time - doc.time
                 sec = delta.total_seconds()
                 hours = sec / 60 / 60
-                if hours < 11:
+                if hours < 12:
                     self.shift_actual_start = doc.shift_actual_start
                     self.shift_actual_end = doc.shift_actual_end
-                    self.shift_start = doc.shift_start
-                    self.shift_end = doc.shift_end
+                    # self.shift_start = doc.shift_start
+                    # self.shift_end = doc.shift_end
             
         shift_type = frappe.db.get_value('Employee',self.employee,'default_shift')
         if shift_type != None or shift_type != "" or shift_type:
@@ -245,42 +246,194 @@ def update_time_of_last_sync(self):
     #     dt_time=dt_time.replace(hour=23, minute=59, second=59)
     #     self.shift_actual_start = dt_time
 def get_last_salary_slip(employee):
-	salary_slips = frappe.get_list(
-		"Salary Slip", filters={"employee": employee, "docstatus": 1}, order_by="start_date desc"
-	)
-	if not salary_slips:
-		return
-	return salary_slips[0].name
+    salary_slips = frappe.get_list(
+        "Salary Slip", filters={"employee": employee, "docstatus": 1}, order_by="start_date desc"
+    )
+    if not salary_slips:        return
+    return salary_slips[0].name
 
 def get_total_applicable_component_amount(employee, applicable_earnings_component, gratuity_rule):
-	sal_slip = get_last_salary_slip(employee)
-	if not sal_slip:
-		frappe.throw(_("No Salary Slip is found for Employee: {0}").format(bold(employee)))
-	component_and_amounts = frappe.get_all(
-		"Salary Detail",
-		filters={
-			"docstatus": 1,
-			"parent": sal_slip,
-			"parentfield": "earnings",
-			"salary_component": ("in", applicable_earnings_component),
-		},
-		fields=["default_amount"],
-	)
-	total_applicable_components_amount = 0
-	if not len(component_and_amounts):
-		frappe.throw(_("No Applicable Component is present in last month salary slip"))
-	for data in component_and_amounts:
-		total_applicable_components_amount += data.default_amount
-	return total_applicable_components_amount   
+    sal_slip = get_last_salary_slip(employee)
+    if not sal_slip:
+        frappe.throw(_("No Salary Slip is found for Employee: {0}").format(bold(employee)))
+    component_and_amounts = frappe.get_all(
+        "Salary Detail",
+        filters={
+            "docstatus": 1,
+            "parent": sal_slip,
+            "parentfield": "earnings",
+            "salary_component": ("in", applicable_earnings_component),
+        },
+        fields=["default_amount"],
+    )
+    total_applicable_components_amount = 0
+    if not len(component_and_amounts):
+        frappe.throw(_("No Applicable Component is present in last month salary slip"))
+    for data in component_and_amounts:
+        total_applicable_components_amount += data.default_amount
+    return total_applicable_components_amount   
 
 def calculate_employee_total_workings_days(employee, date_of_joining, relieving_date):
-	employee_total_workings_days = (get_datetime(relieving_date) - get_datetime(date_of_joining)).days
+    employee_total_workings_days = (get_datetime(relieving_date) - get_datetime(date_of_joining)).days
 
-	# payroll_based_on = frappe.db.get_value("Payroll Settings", None, "payroll_based_on") or "Leave"
-	# if payroll_based_on == "Leave":
-	# 	total_lwp = get_non_working_days(employee, relieving_date, "On Leave")
-	# 	employee_total_workings_days -= total_lwp
-	# elif payroll_based_on == "Attendance":
-	# 	total_absents = get_non_working_days(employee, relieving_date, "Absent")
-	# 	employee_total_workings_days -= total_absents
-	return employee_total_workings_days
+    # payroll_based_on = frappe.db.get_value("Payroll Settings", None, "payroll_based_on") or "Leave"
+    # if payroll_based_on == "Leave":
+    # 	total_lwp = get_non_working_days(employee, relieving_date, "On Leave")
+    # 	employee_total_workings_days -= total_lwp
+    # elif payroll_based_on == "Attendance":
+    # 	total_absents = get_non_working_days(employee, relieving_date, "Absent")
+    # 	employee_total_workings_days -= total_absents
+    return employee_total_workings_days
+
+def on_cancel_of_attendance(self, method):
+    check_in_out = frappe.db.get_list("Employee Checkin" , {"attendance" : self.name})
+    for row in check_in_out:
+        frappe.db.set_value("Employee Checkin" , row.name ,"attendance" , None , update_modified = False )
+
+def get_cancel_entry():
+    cancel_attendance = frappe.db.get_list("Attendance" , {"docstatus" : 2})
+    for row in cancel_attendance:
+        frappe.db.delete("Attendance" , row.name)
+
+@frappe.whitelist()
+def sales_invoice_mails():
+    enqueue(send_sales_invoice_mails, queue='long', timeout=2000)
+    return "Sales Invoice Mails Send"
+
+@frappe.whitelist()
+def send_sales_invoice_mails():
+    def header(contact_list, customer):
+        return """Hello """ + '/'.join(contact_list) + """ / Team """ + customer + """,<br><br>
+        Thank you for choosing IBT as your Technology &amp; BPO Partner.<br>
+        Below invoice/s for """ + customer + """ is/are showing pending as per our records, request you to process payment of outstanding amount
+        at earliest.<br>
+        <div align="center">
+            <table border="1" cellspacing="0" cellpadding="0" width="100%">
+                <thead>
+                    <tr>
+                        <th width="18%" valign="top">Invoice</th>
+                        <th width="12%" valign="top">Due Date</th>
+                        <th width="37%" valign="top">Customer</th>
+                        <th width="13%" valign="top">Grand Total</th>
+                        <th width="18%" valign="top">Outstanding Amt</th>
+                    </tr></thead><tbody>"""
+
+    def table_content(name, posting_date, due_date, customer, grand_total, outstanding_amount):
+        '''bgcolor = ''
+        today = getdate()
+        d_date = getdate(due_date)
+        if today > d_date:
+            bgcolor = 'BC0006' # Dark Red
+        elif add_days(posting_date, 21) <= today < d_date:
+            bgcolor = 'FF5456' # Light Red
+        elif add_days(posting_date, 14) <= today < add_days(posting_date, 21):
+            bgcolor = 'FFBF00' # Amber (Orange)
+        elif today < add_days(posting_date, 14):
+            bgcolor = '0EA33B' # Dark Green
+         bgcolor='#""" + bgcolor + """' style='color:white in outstanding amount'''
+
+        return """<tr>
+                <td width="18%" valign="top" align="center"> {0} </td>
+                <td width="12%" valign="top" align="center"> {1} </td>
+                <td width="37%" valign="top" align="center"> {2} </td>
+                <td width="13%" valign="top" align="center"> {3} </td>
+                <td width="18%" valign="top" align="center"> {4} </td>
+            </tr>""".format(name, due_date, customer, grand_total, outstanding_amount)
+    
+    def footer(outstanding_amount, currency):
+        return """<tr>
+                    <td width="68%" colspan="3" valign="top">
+                        <p align="center">
+                            <strong>Total Outstanding</strong>
+                        </p>
+                    </td>
+                    <td width="13%" valign="top">
+                        <p align="right">
+                            <strong></strong>
+                        </p>
+                    </td>
+                    <td width="18%" valign="top">
+                        <p align="center">
+                            <strong> """ + currency +""" {:,.2f} </strong>
+                        </p>
+                    </td>
+                </tr>
+                </tbody>
+                </table>
+                </div>
+                <br>
+                If you need any clarifications for any of above invoices, 
+                please reach out to our Accounts Receivables Team by sending email to 
+                Accounts.Receivables@ibtevolve.com or +971553475825""".format(sum(outstanding_amount))
+
+    data = frappe.db.sql("""
+        SELECT 
+            si.name, si.customer
+        FROM
+            `tabSales Invoice` as si
+            Left join`tabCustomer` as cu ON si.customer = cu.name
+        WHERE
+            si.status in ('Unpaid', 'Overdue','Draft') and cu.dont_send_payment_reminder_email = 0
+            
+        ORDER BY
+            si.due_date 
+        
+        """, as_dict=1)
+
+    customers = list(set(map(lambda d: d.customer, data)))
+    for customer in customers:
+        attachments, outstanding, recipients, contact_list = [], [], [], []
+        currency = ''
+        table = ''
+
+        for row in data:
+            if row.customer == customer:
+                si = frappe.get_doc("Sales Invoice", row.name)
+
+                attachments.append(frappe.attach_print('Sales Invoice', si.name, print_format="Tax Invoice - 2", print_letterhead=True))
+                table += table_content(
+                            si.name,
+                            si.posting_date,
+                            si.get_formatted("due_date"),
+                            si.customer,
+                            si.get_formatted("grand_total"),
+                            si.get_formatted("outstanding_amount"))
+
+                currency = si.currency
+                outstanding.append(si.outstanding_amount)
+    
+                if si.get('notification_mail') and si.get('notification_mail') not in recipients:
+                    recipients.append(si.notification_mail)
+
+                if not si.get('notification_mail'):
+                    if si.contact_email not in recipients:
+                        recipients.append(si.contact_email)
+                if si.contact_display not in contact_list:
+                    if contact_list != [None]:
+                        contact_list.append(si.contact_display)
+            
+        
+        if contact_list[0]:
+            message = header(contact_list, customer) + '' + table + '' + footer(outstanding, currency)
+            
+            from frappe import _, sendmail, db
+            sendmail(recipients=recipients,
+                    sender='accounts.receivables@ibtevolve.com',
+                cc = ['sajid.hussain@ibtevolve.com'],
+                subject='Open Invoices: ' + customer,
+                message= message,
+                attachments = attachments)
+
+
+def validate_material_request_type(self):
+    """Validate fields in accordance with selected type"""
+    pass
+   
+
+
+def set_title(self):
+    """Set title as comma separated list of items"""
+    if not self.title:
+        if not self.title:
+            items = ", ".join([d.item_name for d in self.items][:3])
+            self.title = _("{0} Request for {1}").format(self.customer, items)[:100]

@@ -77,8 +77,8 @@ class EmployeeCheckin(Document):
 					if hours < 11:
 						self.shift_actual_start = doc.shift_actual_start
 						self.shift_actual_end = doc.shift_actual_end
-						self.shift_start = doc.shift_start
-						self.shift_end = doc.shift_end
+						# self.shift_start = doc.shift_start
+						# self.shift_end = doc.shift_end
 				
 			shift_type = frappe.db.get_value('Employee',self.employee,'default_shift')
 			if shift_type != None or shift_type != "" or shift_type:
@@ -181,6 +181,7 @@ def mark_attendance_and_link_log(
 				"status": attendance_status,
 				"working_hours": working_hours,
 				"company": employee_doc.company,
+				"employee_email":employee_doc.company_email,
 				"shift": shift,
 				"late_entry": late_entry,
 				"early_exit": early_exit,

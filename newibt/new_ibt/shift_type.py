@@ -27,7 +27,7 @@ class ShiftType(Document):
 		process_auto_attendance = "newibt.new_ibt.shift_type.ShiftType.process_auto_attendance"
 		frappe.enqueue(self.process_auto_attendance, queue="long")
 		frappe.msgprint("Attendance are running in back ground so it will finished in some time")
-
+	# @frappe.whitelist()
 	def process_auto_attendance(self):
 		if (
 			not cint(self.enable_auto_attendance)
@@ -40,6 +40,7 @@ class ShiftType(Document):
 			"skip_auto_attendance": 0,
 			"attendance": ("is", "not set"),
 			"time": (">=", self.process_attendance_after),
+			"shift_actual_end": ("<", self.last_sync_of_checkin),
 			"shift": self.name,
 			"shift_actual_start":("!=",None)
 		}
@@ -51,7 +52,7 @@ class ShiftType(Document):
 			logs, key=lambda x: (x["employee"], x["shift_actual_start"])
 		):
 			count += 1
-			print(count)
+			
 			single_shift_logs = list(group)
 			(
 				attendance_status,
@@ -126,7 +127,7 @@ class ShiftType(Document):
 		# no shift assignment found, no need to process absent attendance records
 		if start_date is None:
 			return
-		print('nonr')
+			
 		holiday_list_name = self.holiday_list
 		if not holiday_list_name:
 			holiday_list_name = get_holiday_list_for_employee(employee, False)

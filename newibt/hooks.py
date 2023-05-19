@@ -102,7 +102,17 @@ override_doctype_class = {
 # Document Events
 # ---------------
 # Hook on document methods and events
-
+scheduler_events = {
+	"cron": {
+		"0 10 * * 1": [
+			"newibt.api.sales_invoice_mails"
+		]
+	},
+	"daily": [
+		"newibt.api.get_cancel_entry"
+	],
+	
+}
 # doc_events = {
 #	"*": {
 #		"on_update": "method",
@@ -110,6 +120,8 @@ override_doctype_class = {
 #		"on_trash": "method"
 #	}
 # }
+
+
 doctype_js = {"Full and Final Statement" : "public/js/full_and_final_statement.js"}
 
 doc_events = {
@@ -127,6 +139,9 @@ doc_events = {
 	},
 	"Employee Checkin":{
 		"validate":"newibt.api.validate"
+	},
+	"Attendance":{
+		"on_cancel":"newibt.api.on_cancel_of_attendance"
 	}
 	
 }
@@ -235,3 +250,11 @@ gratuity.get_work_experience_using_method = get_work_experience_using_method
 # from frappe.automation.doctype.auto_repeat.auto_repeat import AutoRepeat
 # from newibt.api import send_notification
 # AutoRepeat.send_notification = send_notification
+
+
+
+from erpnext.stock.doctype.material_request.material_request import MaterialRequest
+from newibt.api import validate_material_request_type
+from newibt.api import set_title
+MaterialRequest.validate_material_request_type = validate_material_request_type
+MaterialRequest.set_title = set_title
